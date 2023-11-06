@@ -12,11 +12,11 @@ public interface GenericDAO<T> {
 	
 	boolean save(T t) throws Exception;
 
-	// boolean delete(int id) throws Exception;
+	 boolean delete(int id) throws Exception;
 
 	boolean delete(T t) throws Exception;
 
-	long size() throws Exception;;
+	long size() throws Exception;
 
 	List<T> findByExample(T t) throws Exception;
 }

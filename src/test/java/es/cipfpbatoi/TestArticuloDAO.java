@@ -21,7 +21,6 @@ import org.junit.jupiter.api.TestMethodOrder;
 import es.cipfpbatoi.dao.ArticuloDAO;
 import es.cipfpbatoi.dao.ConexionBD;
 import es.cipfpbatoi.modelo.Articulo;
-import es.cipfpbatoi.modelo.Grupo;
 
 @TestMethodOrder(OrderAnnotation.class)
 class TestArticuloDAO {
