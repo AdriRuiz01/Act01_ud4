@@ -27,8 +27,10 @@ public class ArticuloDAO implements GenericDAO<Articulo>{
     private final PreparedStatement pstCount;
     private final PreparedStatement pstGroup;
 
+    Connection con;
+
     public ArticuloDAO() throws SQLException {
-        Connection con = ConexionBD.getConexion();
+        con = ConexionBD.getConexion();
         pstSelectPK = con.prepareStatement(SQLSELECTPK);
         pstSelectAll = con.prepareStatement(SQLSELECTALL);
         pstInsert = con.prepareStatement(SQLINSERT, PreparedStatement.RETURN_GENERATED_KEYS);
@@ -142,7 +144,50 @@ public class ArticuloDAO implements GenericDAO<Articulo>{
 
     @Override
     public List<Articulo> findByExample(Articulo articulo) throws SQLException {
-        return null;
+        StringBuilder sql = new StringBuilder("SELECT * FROM articulos WHERE true");
+        List<Object> propiedades = new ArrayList<>();
+
+        if (articulo.getId() != 0) {
+            sql.append(" AND id = ?");
+            propiedades.add(articulo.getId());
+        }
+        if (articulo.getNombre() != null && !articulo.getNombre().isEmpty()) {
+            sql.append(" AND nombre LIKE ?");
+            propiedades.add("%" + articulo.getNombre() + "%");
+        }
+        if (articulo.getPrecio() != 0.0) {
+            sql.append(" AND precio <= ?");
+            propiedades.add(articulo.getPrecio());
+        }
+        if (articulo.getCodigo() != null && !articulo.getCodigo().isEmpty()) {
+            sql.append(" AND codigo LIKE ?");
+            propiedades.add("%" + articulo.getCodigo() + "%");
+        }
+        if (articulo.getGrupo() != 0) {
+            sql.append(" AND grupo = ?");
+            propiedades.add(articulo.getGrupo());
+        }
+
+        PreparedStatement pst = con.prepareStatement(sql.toString());
+        int cont = 1;
+        for (Object propiedad : propiedades){
+            pst.setObject(cont, propiedad);
+            cont++;
+        }
+
+        ResultSet rs = pst.executeQuery();
+        List<Articulo> articulos = new ArrayList<>();
+        while (rs.next()) {
+            articulos.add(new Articulo(
+                    rs.getInt("id"),
+                    rs.getString("nombre"),
+                    rs.getFloat("precio"),
+                    rs.getString("codigo"),
+                    rs.getInt("grupo")
+            ));
+        }
+        rs.close();
+        return articulos;
     }
 
     public boolean exists(int id) throws SQLException {

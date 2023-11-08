@@ -1,14 +1,13 @@
 package es.cipfpbatoi.dao;
 
 import es.cipfpbatoi.modelo.Vendedor;
+import org.checkerframework.checker.units.qual.A;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.SQLException;
+import java.sql.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class VendedorDAO implements GenericDAO<Vendedor>{
 
@@ -25,9 +24,10 @@ public class VendedorDAO implements GenericDAO<Vendedor>{
     private final PreparedStatement pstUpdate;
     private final PreparedStatement pstDelete;
     private final PreparedStatement pstCount;
+    Connection con;
 
     public VendedorDAO() throws SQLException {
-        Connection con = ConexionBD.getConexion();
+        con = ConexionBD.getConexion();
         pstSelectPK = con.prepareStatement(SQLSELECTPK);
         pstSelectAll = con.prepareStatement(SQLSELECTALL,ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
         pstInsert = con.prepareStatement(SQLINSERT, PreparedStatement.RETURN_GENERATED_KEYS);
@@ -135,7 +135,44 @@ public class VendedorDAO implements GenericDAO<Vendedor>{
 
     @Override
     public List<Vendedor> findByExample(Vendedor vendedor) throws SQLException {
-        return null;
+        StringBuilder sql = new StringBuilder("SELECT * FROM vendedores WHERE true");
+        List<Object> propiedades = new ArrayList<>();
+
+        if (vendedor.getId() != 0) {
+            sql.append(" AND id = ?");
+            propiedades.add(vendedor.getId());
+        }
+        if (vendedor.getNombre() != null && !vendedor.getNombre().isEmpty()) {
+            sql.append(" AND nombre LIKE ?");
+            propiedades.add("%" + vendedor.getNombre() + "%");
+        }
+        if (vendedor.getFechaIngreso() != null) {
+            sql.append(" AND fecha_ingreso <= ?");
+            propiedades.add(vendedor.getFechaIngreso());
+        }
+        if (vendedor.getSalario() != 0) {
+            sql.append(" AND salario <= ?");
+            propiedades.add(vendedor.getSalario());
+        }
+
+        PreparedStatement pst = con.prepareStatement(sql.toString());
+        int cont = 1;
+             for (Object propiedad : propiedades){
+                 pst.setObject(cont, propiedad);
+                 cont++;
+             }
+
+        ResultSet rs = pst.executeQuery();
+        List<Vendedor> vendedores = new ArrayList<>();
+        while (rs.next()) {
+            vendedores.add(build(
+                    rs.getInt("id"),
+                    rs.getString("nombre"),
+                    rs.getDate("fecha_ingreso").toLocalDate(),
+                    rs.getFloat("salario")));
+        }
+        rs.close();
+        return vendedores;
     }
 
     public boolean exists(int id) throws SQLException {

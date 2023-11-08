@@ -119,7 +119,7 @@ public class GrupoDAO implements GenericDAO<Grupo>{
     }
 
     public boolean exists(int id) throws SQLException {
-        return !(find(id) == null);
+        return find(id) != null;
     }
 
 }

@@ -82,6 +82,4 @@ public class Vendedor {
 				&& Float.floatToIntBits(salario) == Float.floatToIntBits(other.salario);
 	}
 
-	
-	
 }

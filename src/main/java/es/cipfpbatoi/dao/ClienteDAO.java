@@ -1,6 +1,7 @@
 package es.cipfpbatoi.dao;
 
 import es.cipfpbatoi.modelo.Cliente;
+import org.checkerframework.checker.units.qual.C;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -8,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class ClienteDAO implements GenericDAO<Cliente> {
 
@@ -23,9 +25,10 @@ public class ClienteDAO implements GenericDAO<Cliente> {
     private final PreparedStatement pstUpdate;
     private final PreparedStatement pstDelete;
     private final PreparedStatement pstCount;
+    Connection con;
 
     public ClienteDAO() throws SQLException {
-        Connection con = ConexionBD.getConexion();
+        con = ConexionBD.getConexion();
         pstSelectPK = con.prepareStatement(SQLSELECTPK);
         pstSelectAll = con.prepareStatement(SQLSELECTALL, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
         pstInsert = con.prepareStatement(SQLINSERT, PreparedStatement.RETURN_GENERATED_KEYS);
@@ -129,7 +132,40 @@ public class ClienteDAO implements GenericDAO<Cliente> {
 
     @Override
     public List<Cliente> findByExample(Cliente cliente) throws SQLException {
-        return null;
+        StringBuilder sql = new StringBuilder("SELECT * FROM clientes WHERE true");
+        List<Object> propiedades = new ArrayList<>();
+
+        if (cliente.getId()!=0){
+            sql.append(" AND id = ?");
+            propiedades.add(cliente.getId());
+        }
+        if (cliente.getNombre()!=null && !cliente.getNombre().isEmpty()){
+            sql.append(" AND nombre LIKE ?");
+            propiedades.add("%" + cliente.getNombre() + "%");
+        }
+        if (cliente.getDireccion()!=null && !cliente.getDireccion().isEmpty()){
+            sql.append(" AND direccion LIKE ?");
+            propiedades.add("%" + cliente.getDireccion() + "%");
+        }
+
+        PreparedStatement pst = con.prepareStatement(sql.toString());
+        int cont = 1;
+        for (Object propiedad : propiedades){
+            pst.setObject(cont, propiedad);
+            cont++;
+        }
+
+        ResultSet rs = pst.executeQuery();
+        List<Cliente> clientes = new ArrayList<>();
+        while(rs.next()){
+            clientes.add(new Cliente(
+                    rs.getInt("id"),
+                    rs.getString("nombre"),
+                    rs.getString("direccion")
+            ));
+        }
+        rs.close();
+        return clientes;
     }
 
     public boolean exists(int id) throws SQLException {
