@@ -53,7 +53,6 @@ public class ArticuloDAO implements GenericDAO<Articulo>{
         return new Articulo(id,nombre,precio,codigo,grupo);
     }
 
-
     public Articulo find(int id) throws SQLException {
         Articulo a = null;
         pstSelectPK.setInt(1,id);

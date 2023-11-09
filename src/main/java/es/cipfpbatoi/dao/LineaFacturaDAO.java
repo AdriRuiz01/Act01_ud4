@@ -1,5 +1,6 @@
 package es.cipfpbatoi.dao;
 
+import es.cipfpbatoi.modelo.Articulo;
 import es.cipfpbatoi.modelo.LineaFactura;
 
 import java.sql.Connection;
@@ -15,14 +16,16 @@ public class LineaFacturaDAO implements GenericDAO<LineaFactura> {
     private static final String SQLUPDATE = "UPDATE lineas_factura SET cantidad = ?, importe = ? WHERE linea = ? AND factura = ?";
     private static final String SQLDELETE = "DELETE FROM lineas_factura WHERE linea = ? AND factura = ?";
     private static final String SQLBYFACTURA = "SELECT * FROM lineas_factura WHERE factura = ?";
+    private static final String SQLPRECIO = "SELECT precio from articulos where id = ?";
 
     private final PreparedStatement pstSelectPK;
     private final PreparedStatement pstInsert;
     private final PreparedStatement pstUpdate;
     private final PreparedStatement pstDelete;
     private final PreparedStatement pstByFactura;
+    private final PreparedStatement pstPrecioArticulo;
     private final FacturaDAO facturaDAO;
-
+    private final ArticuloDAO articuloDAO;
 
     public LineaFacturaDAO() throws SQLException {
         Connection con = ConexionBD.getConexion();
@@ -32,6 +35,8 @@ public class LineaFacturaDAO implements GenericDAO<LineaFactura> {
         pstDelete = con.prepareStatement(SQLDELETE);
         pstByFactura = con.prepareStatement(SQLBYFACTURA, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_UPDATABLE);
         facturaDAO = new FacturaDAO();
+        pstPrecioArticulo = con.prepareStatement(SQLPRECIO);
+        articuloDAO = new ArticuloDAO();
     }
 
     public void cerrar() throws SQLException {
@@ -40,6 +45,7 @@ public class LineaFacturaDAO implements GenericDAO<LineaFactura> {
         pstUpdate.close();
         pstDelete.close();
         pstByFactura.close();
+        pstPrecioArticulo.close();
     }
 
     private LineaFactura build(int linea, int factura, int articulo, int cantidad, float importe) {
@@ -50,8 +56,6 @@ public class LineaFacturaDAO implements GenericDAO<LineaFactura> {
     public LineaFactura find(int id) throws Exception {
         return null;
     }
-
-
 
     public LineaFactura find(int linea, int factura) throws SQLException {
         LineaFactura lineaFactura = null;
@@ -84,27 +88,49 @@ public class LineaFacturaDAO implements GenericDAO<LineaFactura> {
 
         int nextLine = facturaDAO.getNextLine(lineaFactura.getFactura());
         lineaFactura.setLinea(nextLine);
-        pstInsert.setInt(1, lineaFactura.getLinea());
-        pstInsert.setInt(2, lineaFactura.getFactura());
-        pstInsert.setInt(3, lineaFactura.getArticulo());
-        pstInsert.setInt(4, lineaFactura.getCantidad());
-        pstInsert.setFloat(5, lineaFactura.getImporte());
-        int insertados = pstInsert.executeUpdate();
-
-        if (insertados == 1) {
-            return lineaFactura;
+        float importe = obtenerPrecioArticulo(lineaFactura.getArticulo()) * lineaFactura.getCantidad();
+        if (importe!=-1) {
+            pstInsert.setInt(1, lineaFactura.getLinea());
+            pstInsert.setInt(2, lineaFactura.getFactura());
+            pstInsert.setInt(3, lineaFactura.getArticulo());
+            pstInsert.setInt(4, lineaFactura.getCantidad());
+            pstInsert.setFloat(5, importe);
         }
-        return null;
+        int insertados = pstInsert.executeUpdate();
+        if (insertados > 0){
+            lineaFactura.setLinea(nextLine);
+            lineaFactura.setImporte(importe);
+            return lineaFactura;
+        } else{
+            return null;
+        }
+    }
+
+    private float obtenerPrecioArticulo(int id) throws SQLException {
+        pstPrecioArticulo.setInt(1,id);
+        ResultSet rs = pstPrecioArticulo.executeQuery();
+        if (rs.next()){
+           return rs.getFloat("precio");
+        }
+        return -1;
     }
 
     @Override
     public boolean update(LineaFactura lineaFactura) throws SQLException {
+
+        float importe = obtenerPrecioArticulo(lineaFactura.getArticulo()) * lineaFactura.getCantidad();
+        if (importe>=0){
+            lineaFactura.setImporte(importe);
+            pstUpdate.setFloat(2, lineaFactura.getImporte());
+        }else{
+            pstUpdate.setObject(2,null);
+        }
         pstUpdate.setInt(1, lineaFactura.getCantidad());
-        pstUpdate.setFloat(2, lineaFactura.getImporte());
         pstUpdate.setInt(3, lineaFactura.getLinea());
         pstUpdate.setInt(4, lineaFactura.getFactura());
+
         int actualizados = pstUpdate.executeUpdate();
-        return (actualizados == 1);
+        return actualizados > 0;
     }
 
     @Override
